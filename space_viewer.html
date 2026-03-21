@@ -1,0 +1,767 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>cat_learn_percept space viewer</title>
+    <style>
+      :root {
+        --bg-a: #ece6d8;
+        --bg-b: #d0ddd2;
+        --panel: #fffaf0;
+        --ink: #1b2630;
+        --muted: #475761;
+        --line: #c8bda0;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
+        color: var(--ink);
+        min-height: 100dvh;
+        background:
+          radial-gradient(circle at 8% 10%, #fff2d2 0%, transparent 36%),
+          radial-gradient(circle at 84% 14%, #d7e9df 0%, transparent 33%),
+          linear-gradient(145deg, var(--bg-a), var(--bg-b));
+      }
+      .wrap { max-width: 1240px; margin: 18px auto 30px; padding: 0 12px; }
+      .card {
+        background: color-mix(in srgb, var(--panel) 94%, white);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: 0 14px 34px rgba(27, 38, 48, 0.1);
+      }
+      .title { margin: 0; font-size: 1.2rem; }
+      .subtitle { margin: 4px 0 12px; color: var(--muted); font-size: 0.92rem; }
+      .panels {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+      }
+      .panel h2 { margin: 0 0 8px; font-size: 0.98rem; }
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .controls .wide { grid-column: 1 / -1; }
+      label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 0.82rem;
+        font-weight: 600;
+      }
+      input {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 8px;
+        padding: 8px;
+        font: inherit;
+        color: inherit;
+      }
+      .viz {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        align-items: start;
+      }
+      .viz.cp-only {
+        grid-template-columns: 1fr;
+      }
+      .viz > div { min-width: 0; }
+      .plot-wrap {
+        position: relative;
+      }
+      .plot-overlay {
+        position: absolute;
+        right: 12px;
+        bottom: 12px;
+        max-width: 58%;
+        padding: 6px 8px;
+        border: 1px solid #aab2bb;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.88);
+        font-family: "Menlo", "Consolas", monospace;
+        font-size: 0.72rem;
+        line-height: 1.25;
+        white-space: pre-wrap;
+        pointer-events: none;
+      }
+      canvas {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #f7f6f2;
+      }
+      .grating-col {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fbfaf6;
+        padding: 8px;
+      }
+      .grating-title {
+        margin: 0 0 6px;
+        font-size: 0.84rem;
+        color: #384652;
+      }
+      .readout {
+        margin-top: 7px;
+        font-family: "Menlo", "Consolas", monospace;
+        font-size: 0.8rem;
+        white-space: pre-wrap;
+      }
+      @media (max-width: 980px) {
+        .controls { grid-template-columns: 1fr 1fr; }
+        .viz { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 700px) {
+        .controls { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card">
+        <h1 class="title">Stimulus Space Viewer</h1>
+        <p class="subtitle">Shared category geometry from Underlying Categories applies to PA and CP panels. Hover each plot for panel-specific grating preview.</p>
+
+        <div class="panels">
+          <section class="panel">
+            <h2>Underlying Categories</h2>
+            <div class="controls">
+              <div>
+                <label for="catAxisGap">Axis gap</label>
+                <input id="catAxisGap" type="text" value="30" />
+              </div>
+              <div>
+                <label for="catMajorAxisFrac">Major frac</label>
+                <input id="catMajorAxisFrac" type="text" value="0.75" />
+              </div>
+              <div>
+                <label for="catMinorAxisLen">Minor len</label>
+                <input id="catMinorAxisLen" type="text" value="25" />
+              </div>
+              <div>
+                <label for="catSampleCount">Sample count</label>
+                <input id="catSampleCount" type="text" value="300" />
+              </div>
+            </div>
+            <div class="viz">
+              <div class="plot-wrap">
+                <canvas id="catCanvas" width="780" height="780"></canvas>
+                <div class="plot-overlay" id="catPlotOverlay">x=50.00 y=50.00 category=boundary
+sf=4.500 | ori=45.00 deg</div>
+                <div class="readout" id="catReadout">--</div>
+              </div>
+              <div class="grating-col">
+                <p class="grating-title">Grating @ hover (Categories panel)</p>
+                <canvas id="catGratingCanvas" width="360" height="360"></canvas>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>PA Probe Locations</h2>
+            <div class="controls">
+              <div class="wide">
+                <label for="paAxisOffsets">Axis offsets (comma list)</label>
+                <input id="paAxisOffsets" type="text" value="-18,18" />
+              </div>
+              <div class="wide">
+                <label for="paOuterOffsets">Outer offsets (comma list)</label>
+                <input id="paOuterOffsets" type="text" value="10,18" />
+              </div>
+            </div>
+            <div class="viz">
+              <div class="plot-wrap">
+                <canvas id="paCanvas" width="780" height="780"></canvas>
+                <div class="plot-overlay" id="paPlotOverlay">x=50.00 y=50.00 category=boundary
+sf=4.500 | ori=45.00 deg</div>
+                <div class="readout" id="paReadout">--</div>
+              </div>
+              <div class="grating-col">
+                <p class="grating-title">Grating @ hover (PA panel)</p>
+                <canvas id="paGratingCanvas" width="360" height="360"></canvas>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>CP Pair Geometry</h2>
+            <div class="controls">
+              <div>
+                <label for="cpDistSmall">Small dist</label>
+                <input id="cpDistSmall" type="text" value="6" />
+              </div>
+              <div>
+                <label for="cpDistLarge">Large dist</label>
+                <input id="cpDistLarge" type="text" value="12" />
+              </div>
+            </div>
+            <div class="viz">
+              <div class="plot-wrap">
+                <canvas id="cpCanvas" width="780" height="780"></canvas>
+                <div class="plot-overlay" id="cpPlotOverlay">x=50.00 y=50.00 category=boundary
+sf=4.500 | ori=45.00 deg</div>
+                <div class="readout" id="cpReadout">--</div>
+              </div>
+              <div class="grating-col">
+                <p class="grating-title">Grating @ hover (CP panel)</p>
+                <canvas id="cpGratingCanvas" width="360" height="360"></canvas>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const X_MIN = 0;
+      const X_MAX = 100;
+      const Y_MIN = 0;
+      const Y_MAX = 100;
+      const SF_OFFSET = 2.0;
+      const SQRT2 = Math.sqrt(2);
+      const CENTER = { x: 50, y: 50 };
+      const DIAG = Math.hypot(X_MAX - X_MIN, Y_MAX - Y_MIN);
+      const T_MAJOR = [1 / SQRT2, 1 / SQRT2];
+      const N_MINOR = [-1 / SQRT2, 1 / SQRT2];
+      const PAD = 30;
+
+      const catCanvas = document.getElementById('catCanvas');
+      const paCanvas = document.getElementById('paCanvas');
+      const cpCanvas = document.getElementById('cpCanvas');
+      const catGratingCanvas = document.getElementById('catGratingCanvas');
+      const paGratingCanvas = document.getElementById('paGratingCanvas');
+      const cpGratingCanvas = document.getElementById('cpGratingCanvas');
+
+      const catCtx = catCanvas.getContext('2d');
+      const paCtx = paCanvas.getContext('2d');
+      const cpCtx = cpCanvas.getContext('2d');
+
+      const catReadout = document.getElementById('catReadout');
+      const paReadout = document.getElementById('paReadout');
+      const cpReadout = document.getElementById('cpReadout');
+      const catPlotOverlay = document.getElementById('catPlotOverlay');
+      const paPlotOverlay = document.getElementById('paPlotOverlay');
+      const cpPlotOverlay = document.getElementById('cpPlotOverlay');
+
+      let catHover = null;
+      let paHover = null;
+      let cpHover = null;
+
+      function clamp(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, v));
+      }
+
+      function dot(a, b) {
+        return a[0] * b[0] + a[1] * b[1];
+      }
+
+      function shiftPoint(pt, dir, amount) {
+        return { x: pt.x + dir[0] * amount, y: pt.y + dir[1] * amount };
+      }
+
+      function parseFloatInput(id, fallback) {
+        const v = Number.parseFloat(document.getElementById(id).value);
+        return Number.isFinite(v) ? v : fallback;
+      }
+
+      function parseListInput(id, fallback) {
+        const vals = String(document.getElementById(id).value)
+          .split(',')
+          .map((s) => Number.parseFloat(s.trim()))
+          .filter(Number.isFinite);
+        return vals.length ? vals : fallback;
+      }
+
+      function makeRng(seedBase) {
+        let state = seedBase >>> 0;
+        return function rand() {
+          state = (1664525 * state + 1013904223) >>> 0;
+          return state / 4294967296;
+        };
+      }
+
+      function xyToCanvas(canvas, x, y) {
+        const nx = (x - X_MIN) / (X_MAX - X_MIN);
+        const ny = (y - Y_MIN) / (Y_MAX - Y_MIN);
+        return {
+          cx: PAD + nx * (canvas.width - PAD * 2),
+          cy: canvas.height - (PAD + ny * (canvas.height - PAD * 2)),
+        };
+      }
+
+      function canvasToXY(canvas, cx, cy) {
+        const nx = clamp((cx - PAD) / (canvas.width - PAD * 2), 0, 1);
+        const ny = clamp((canvas.height - cy - PAD) / (canvas.height - PAD * 2), 0, 1);
+        return {
+          x: X_MIN + nx * (X_MAX - X_MIN),
+          y: Y_MIN + ny * (Y_MAX - Y_MIN),
+        };
+      }
+
+      function signedBoundaryDistance(x, y) {
+        return (y - x) / SQRT2;
+      }
+
+      function sfFromX(x) {
+        return (x * 5) / 100 + SF_OFFSET;
+      }
+
+      function oriFromY(y) {
+        return (y * 90) / 100;
+      }
+
+      function categoryFromPoint(pt) {
+        if (Math.abs(pt.y - pt.x) < 1e-9) return 'boundary';
+        return pt.y > pt.x ? 'A' : 'B';
+      }
+
+      function getSharedGeometryParams() {
+        const axisGap = parseFloatInput('catAxisGap', 30);
+        const majorFrac = clamp(parseFloatInput('catMajorAxisFrac', 0.75), 0.05, 0.95);
+        const minorLen = clamp(parseFloatInput('catMinorAxisLen', 25), 1, DIAG * 0.45 * 2);
+        return { axisGap, majorFrac, minorLen };
+      }
+
+      function makeGeometry(axisGap, majorFrac, minorLen) {
+        const majorLen = majorFrac * DIAG;
+        const halfMajor = majorLen * 0.5;
+        const halfMinor = minorLen * 0.5;
+        const halfGap = axisGap * 0.5;
+        return {
+          halfMajor,
+          halfMinor,
+          centerA: shiftPoint(CENTER, N_MINOR, halfGap),
+          centerB: shiftPoint(CENTER, N_MINOR, -halfGap),
+        };
+      }
+
+      function pointOnCategorySide(pt, category) {
+        const d = signedBoundaryDistance(pt.x, pt.y);
+        return category === 'A' ? d > 0 : d < 0;
+      }
+
+      function pointInEllipse(pt, category, geom) {
+        const c = category === 'A' ? geom.centerA : geom.centerB;
+        const rel = [pt.x - c.x, pt.y - c.y];
+        const majorCoord = dot(rel, T_MAJOR);
+        const minorCoord = dot(rel, N_MINOR);
+        const q = (majorCoord * majorCoord) / (geom.halfMajor * geom.halfMajor)
+          + (minorCoord * minorCoord) / (geom.halfMinor * geom.halfMinor);
+        return q <= 1.0 + 1e-9;
+      }
+
+      function pointInCategory(pt, category, geom) {
+        return pt.x >= 0 && pt.x <= 100
+          && pt.y >= 0 && pt.y <= 100
+          && pointOnCategorySide(pt, category)
+          && pointInEllipse(pt, category, geom);
+      }
+
+      function sampleInCategory(category, geom, rand) {
+        const c = category === 'A' ? geom.centerA : geom.centerB;
+        for (let k = 0; k < 600; k++) {
+          const r = Math.sqrt(rand());
+          const th = rand() * 2 * Math.PI;
+          const maj = geom.halfMajor * r * Math.cos(th);
+          const min = geom.halfMinor * r * Math.sin(th);
+          const pt = {
+            x: c.x + T_MAJOR[0] * maj + N_MINOR[0] * min,
+            y: c.y + T_MAJOR[1] * maj + N_MINOR[1] * min,
+          };
+          if (pointInCategory(pt, category, geom)) return pt;
+        }
+        return { ...c };
+      }
+
+      function drawFrame(ctx, canvas) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#f7f6f2';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = '#d3ccb9';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(PAD, PAD, canvas.width - PAD * 2, canvas.height - PAD * 2);
+
+        const p1 = xyToCanvas(canvas, 0, 0);
+        const p2 = xyToCanvas(canvas, 100, 100);
+        ctx.strokeStyle = '#111827';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(p1.cx, p1.cy);
+        ctx.lineTo(p2.cx, p2.cy);
+        ctx.stroke();
+      }
+
+      function drawEllipseOutline(ctx, canvas, center, geom, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const steps = 180;
+        for (let i = 0; i <= steps; i++) {
+          const th = (i / steps) * Math.PI * 2;
+          const maj = geom.halfMajor * Math.cos(th);
+          const min = geom.halfMinor * Math.sin(th);
+          const pt = {
+            x: center.x + T_MAJOR[0] * maj + N_MINOR[0] * min,
+            y: center.y + T_MAJOR[1] * maj + N_MINOR[1] * min,
+          };
+          const c = xyToCanvas(canvas, pt.x, pt.y);
+          if (i === 0) ctx.moveTo(c.cx, c.cy);
+          else ctx.lineTo(c.cx, c.cy);
+        }
+        ctx.stroke();
+      }
+
+      function drawHoverMarker(ctx, canvas, hover) {
+        if (!hover) return;
+        const p = xyToCanvas(canvas, hover.x, hover.y);
+        ctx.strokeStyle = '#17202a';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(PAD, p.cy);
+        ctx.lineTo(canvas.width - PAD, p.cy);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(p.cx, PAD);
+        ctx.lineTo(p.cx, canvas.height - PAD);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.cx, p.cy, 5.2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      function drawGrating(gratingCanvas, x, y) {
+        const gctx = gratingCanvas.getContext('2d');
+        const w = gratingCanvas.width;
+        const h = gratingCanvas.height;
+        const img = gctx.createImageData(w, h);
+        const data = img.data;
+        const sf = sfFromX(x);
+        const ori = (oriFromY(y) * Math.PI) / 180;
+        const cx = w / 2;
+        const cy = h / 2;
+        const radius = Math.min(w, h) * 0.42;
+
+        for (let j = 0; j < h; j++) {
+          for (let i = 0; i < w; i++) {
+            const dx = i - cx;
+            const dy = j - cy;
+            const r = Math.sqrt(dx * dx + dy * dy);
+            const idx = (j * w + i) * 4;
+            if (r > radius) {
+              data[idx] = 247;
+              data[idx + 1] = 246;
+              data[idx + 2] = 242;
+              data[idx + 3] = 255;
+              continue;
+            }
+            const ux = dx / (radius * 2);
+            const uy = dy / (radius * 2);
+            const proj = ux * Math.cos(ori) + uy * Math.sin(ori);
+            const s = Math.sin(2 * Math.PI * sf * proj);
+            const v = Math.round(127 + 118 * s);
+            data[idx] = v;
+            data[idx + 1] = v;
+            data[idx + 2] = v;
+            data[idx + 3] = 255;
+          }
+        }
+
+        gctx.putImageData(img, 0, 0);
+        gctx.strokeStyle = '#b8b0a1';
+        gctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+      }
+
+      function formatGratingReadout(pt) {
+        const p = pt || { x: 50, y: 50 };
+        const sf = sfFromX(p.x);
+        const ori = oriFromY(p.y);
+        return `x=${p.x.toFixed(2)} y=${p.y.toFixed(2)} category=${categoryFromPoint(p)}\nsf=${sf.toFixed(3)} | ori=${ori.toFixed(2)} deg`;
+      }
+
+      function drawCategoriesPanel(geom) {
+        const sampleCount = Math.round(clamp(parseFloatInput('catSampleCount', 300), 100, 3000));
+        const rand = makeRng(1001);
+
+        drawFrame(catCtx, catCanvas);
+        drawEllipseOutline(catCtx, catCanvas, geom.centerA, geom, '#0f766e');
+        drawEllipseOutline(catCtx, catCanvas, geom.centerB, geom, '#be185d');
+
+        for (let i = 0; i < sampleCount; i++) {
+          const pA = sampleInCategory('A', geom, rand);
+          const pB = sampleInCategory('B', geom, rand);
+          const ca = xyToCanvas(catCanvas, pA.x, pA.y);
+          const cb = xyToCanvas(catCanvas, pB.x, pB.y);
+
+          catCtx.fillStyle = 'rgba(15,118,110,0.75)';
+          catCtx.fillRect(ca.cx - 1.1, ca.cy - 1.1, 2.2, 2.2);
+          catCtx.fillStyle = 'rgba(190,24,93,0.75)';
+          catCtx.fillRect(cb.cx - 1.1, cb.cy - 1.1, 2.2, 2.2);
+        }
+
+        drawHoverMarker(catCtx, catCanvas, catHover);
+        catReadout.textContent = `A/B ellipses | samples/category=${sampleCount}`;
+      }
+
+      function buildPaPoints(geom, axisOffsets, outerOffsets) {
+        const pts = [];
+        const outerA = outerOffsets.length > 0 ? outerOffsets[0] : 10;
+        const outerB = outerOffsets.length > 1 ? outerOffsets[1] : outerA + 8;
+
+        for (const category of ['A', 'B']) {
+          const sign = category === 'A' ? 1 : -1;
+          const center = category === 'A' ? geom.centerA : geom.centerB;
+          for (const axisOffset of axisOffsets) {
+            const axisPt = shiftPoint(center, T_MAJOR, axisOffset);
+            if (pointInCategory(axisPt, category, geom)) {
+              pts.push({ ...axisPt, category, family: 'inside' });
+            }
+
+            // Outside pairs stay on the boundary-normal line through each inside point.
+            const o1 = shiftPoint(axisPt, N_MINOR, sign * outerA);
+            const o2 = shiftPoint(axisPt, N_MINOR, sign * outerB);
+            if (pointOnCategorySide(o1, category) && o1.x >= 0 && o1.x <= 100 && o1.y >= 0 && o1.y <= 100) {
+              pts.push({ ...o1, category, family: 'outer' });
+            }
+            if (pointOnCategorySide(o2, category) && o2.x >= 0 && o2.x <= 100 && o2.y >= 0 && o2.y <= 100) {
+              pts.push({ ...o2, category, family: 'outer' });
+            }
+          }
+        }
+        return pts;
+      }
+
+      function drawPaPanel(geom) {
+        const axisOffsets = parseListInput('paAxisOffsets', [-18, 18]).slice(0, 2);
+        const outerOffsets = parseListInput('paOuterOffsets', [10, 18]).slice(0, 2);
+
+        drawFrame(paCtx, paCanvas);
+        drawEllipseOutline(paCtx, paCanvas, geom.centerA, geom, '#0f766e');
+        drawEllipseOutline(paCtx, paCanvas, geom.centerB, geom, '#be185d');
+
+        const pts = buildPaPoints(geom, axisOffsets, outerOffsets);
+        for (const p of pts) {
+          const c = xyToCanvas(paCanvas, p.x, p.y);
+          paCtx.fillStyle = p.family === 'inside' ? '#111827' : '#2563eb';
+          paCtx.beginPath();
+          paCtx.arc(c.cx, c.cy, p.family === 'inside' ? 4.4 : 3.8, 0, Math.PI * 2);
+          paCtx.fill();
+        }
+
+        drawHoverMarker(paCtx, paCanvas, paHover);
+        const insideN = pts.filter((p) => p.family === 'inside').length;
+        const outerN = pts.filter((p) => p.family === 'outer').length;
+        paReadout.textContent = `inside=${insideN} outer=${outerN} | axisOffsets=[${axisOffsets.join(',')}] | outerOffsets=[${outerOffsets.join(',')}]`;
+      }
+
+      function buildCpPairs(geom, small, large) {
+        const safeSmall = Math.max(0.5, Math.min(small, geom.halfMajor * 1.9));
+        const safeLarge = Math.max(safeSmall + 0.25, Math.min(large, geom.halfMajor * 1.9));
+        const withinASmall = {
+          p1: shiftPoint(geom.centerA, T_MAJOR, safeSmall * 0.5),
+          p2: shiftPoint(geom.centerA, T_MAJOR, -safeSmall * 0.5),
+          family: 'within_A_small',
+        };
+        const withinALarge = {
+          p1: shiftPoint(geom.centerA, T_MAJOR, safeLarge * 0.5),
+          p2: shiftPoint(geom.centerA, T_MAJOR, -safeLarge * 0.5),
+          family: 'within_A_large',
+        };
+        const withinBSmall = {
+          p1: shiftPoint(geom.centerB, T_MAJOR, safeSmall * 0.5),
+          p2: shiftPoint(geom.centerB, T_MAJOR, -safeSmall * 0.5),
+          family: 'within_B_small',
+        };
+        const withinBLarge = {
+          p1: shiftPoint(geom.centerB, T_MAJOR, safeLarge * 0.5),
+          p2: shiftPoint(geom.centerB, T_MAJOR, -safeLarge * 0.5),
+          family: 'within_B_large',
+        };
+
+        function makeBetweenPair(targetDist, majorOffset) {
+          const t = clamp(majorOffset, -geom.halfMajor * 0.92, geom.halfMajor * 0.92);
+          const r = geom.halfMinor * Math.sqrt(Math.max(0, 1 - (t * t) / (geom.halfMajor * geom.halfMajor)));
+          const halfGap = Math.abs(signedBoundaryDistance(geom.centerA.x, geom.centerA.y));
+          const lower = Math.max(0.5, 2 * (halfGap - r) + 0.25);
+          const upper = Math.max(lower + 0.25, 2 * (halfGap + r) - 0.25);
+          const d = clamp(targetDist, lower, upper);
+          const mid = shiftPoint(CENTER, T_MAJOR, t);
+          return {
+            p1: shiftPoint(mid, N_MINOR, d * 0.5),
+            p2: shiftPoint(mid, N_MINOR, -d * 0.5),
+          };
+        }
+
+        // Between-category: two sets, each with small and large.
+        const between1Small = { ...makeBetweenPair(small, -14), family: 'between_set1_small' };
+        const between1Large = { ...makeBetweenPair(large, -14), family: 'between_set1_large' };
+        const between2Small = { ...makeBetweenPair(small, 14), family: 'between_set2_small' };
+        const between2Large = { ...makeBetweenPair(large, 14), family: 'between_set2_large' };
+
+        return [
+          withinASmall,
+          withinALarge,
+          withinBSmall,
+          withinBLarge,
+          between1Small,
+          between1Large,
+          between2Small,
+          between2Large,
+        ];
+      }
+
+      function drawCpPanel(geom) {
+        const cpDistSmall = Math.max(0.5, parseFloatInput('cpDistSmall', 6));
+        const cpDistLarge = Math.max(cpDistSmall + 0.5, parseFloatInput('cpDistLarge', 12));
+
+        drawFrame(cpCtx, cpCanvas);
+        drawEllipseOutline(cpCtx, cpCanvas, geom.centerA, geom, '#0f766e');
+        drawEllipseOutline(cpCtx, cpCanvas, geom.centerB, geom, '#be185d');
+
+        const pairs = buildCpPairs(geom, cpDistSmall, cpDistLarge);
+        for (const pair of pairs) {
+          const c1 = xyToCanvas(cpCanvas, pair.p1.x, pair.p1.y);
+          const c2 = xyToCanvas(cpCanvas, pair.p2.x, pair.p2.y);
+          cpCtx.strokeStyle = '#111111';
+          cpCtx.lineWidth = 2;
+          cpCtx.beginPath();
+          cpCtx.moveTo(c1.cx, c1.cy);
+          cpCtx.lineTo(c2.cx, c2.cy);
+          cpCtx.stroke();
+
+          cpCtx.fillStyle = '#111111';
+          cpCtx.beginPath();
+          cpCtx.arc(c1.cx, c1.cy, 3.3, 0, Math.PI * 2);
+          cpCtx.fill();
+          cpCtx.beginPath();
+          cpCtx.arc(c2.cx, c2.cy, 3.3, 0, Math.PI * 2);
+          cpCtx.fill();
+        }
+
+        drawHoverMarker(cpCtx, cpCanvas, cpHover);
+        cpReadout.textContent = `pairs=${pairs.length} | within A: small+large | within B: small+large | between: 2 sets x (small+large)`;
+      }
+
+      function updatePanelGratings() {
+        drawGrating(catGratingCanvas, (catHover || CENTER).x, (catHover || CENTER).y);
+        drawGrating(paGratingCanvas, (paHover || CENTER).x, (paHover || CENTER).y);
+        drawGrating(cpGratingCanvas, (cpHover || CENTER).x, (cpHover || CENTER).y);
+        catPlotOverlay.textContent = formatGratingReadout(catHover);
+        paPlotOverlay.textContent = formatGratingReadout(paHover);
+        cpPlotOverlay.textContent = formatGratingReadout(cpHover);
+      }
+
+      function syncUrl() {
+        const u = new URL(window.location.href);
+        const set = (k, id) => u.searchParams.set(k, document.getElementById(id).value);
+
+        set('cat_axis_gap', 'catAxisGap');
+        set('cat_major_axis_frac', 'catMajorAxisFrac');
+        set('cat_minor_axis_len', 'catMinorAxisLen');
+        set('cat_sample_count', 'catSampleCount');
+        set('pa_axis_offsets', 'paAxisOffsets');
+        set('pa_outer_offsets', 'paOuterOffsets');
+        set('cp_dist_small', 'cpDistSmall');
+        set('cp_dist_large', 'cpDistLarge');
+
+        window.history.replaceState({}, '', u.toString());
+      }
+
+      function loadUrlValues() {
+        const q = new URL(window.location.href).searchParams;
+        const maybeSet = (id, key) => {
+          const v = q.get(key);
+          if (v != null) document.getElementById(id).value = v;
+        };
+
+        maybeSet('catAxisGap', 'cat_axis_gap');
+        maybeSet('catMajorAxisFrac', 'cat_major_axis_frac');
+        maybeSet('catMinorAxisLen', 'cat_minor_axis_len');
+        maybeSet('catSampleCount', 'cat_sample_count');
+
+        maybeSet('paAxisOffsets', 'pa_axis_offsets');
+        maybeSet('paOuterOffsets', 'pa_outer_offsets');
+
+        maybeSet('cpDistSmall', 'cp_dist_small');
+        maybeSet('cpDistLarge', 'cp_dist_large');
+      }
+
+      function updateHoverFor(canvas, ev) {
+        const rect = canvas.getBoundingClientRect();
+        const sx = (ev.clientX - rect.left) * (canvas.width / rect.width);
+        const sy = (ev.clientY - rect.top) * (canvas.height / rect.height);
+        if (sx < PAD || sx > canvas.width - PAD || sy < PAD || sy > canvas.height - PAD) return null;
+        return canvasToXY(canvas, sx, sy);
+      }
+
+      function redrawAll() {
+        const shared = getSharedGeometryParams();
+        const geom = makeGeometry(shared.axisGap, shared.majorFrac, shared.minorLen);
+
+        drawCategoriesPanel(geom);
+        drawPaPanel(geom);
+        drawCpPanel(geom);
+        updatePanelGratings();
+        syncUrl();
+      }
+
+      const controlIds = [
+        'catAxisGap', 'catMajorAxisFrac', 'catMinorAxisLen', 'catSampleCount',
+        'paAxisOffsets', 'paOuterOffsets',
+        'cpDistSmall', 'cpDistLarge',
+      ];
+
+      for (const id of controlIds) {
+        const el = document.getElementById(id);
+        el.addEventListener('input', redrawAll);
+        el.addEventListener('change', redrawAll);
+      }
+
+      catCanvas.addEventListener('pointermove', (ev) => {
+        catHover = updateHoverFor(catCanvas, ev);
+        redrawAll();
+      });
+      catCanvas.addEventListener('pointerleave', () => {
+        catHover = null;
+        redrawAll();
+      });
+
+      paCanvas.addEventListener('pointermove', (ev) => {
+        paHover = updateHoverFor(paCanvas, ev);
+        redrawAll();
+      });
+      paCanvas.addEventListener('pointerleave', () => {
+        paHover = null;
+        redrawAll();
+      });
+
+      cpCanvas.addEventListener('pointermove', (ev) => {
+        cpHover = updateHoverFor(cpCanvas, ev);
+        redrawAll();
+      });
+      cpCanvas.addEventListener('pointerleave', () => {
+        cpHover = null;
+        redrawAll();
+      });
+
+      loadUrlValues();
+      redrawAll();
+    </script>
+  </body>
+</html>

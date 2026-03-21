@@ -1,0 +1,314 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>cat_learn_percept launcher</title>
+    <style>
+      :root {
+        --bg-a: #efe8d7;
+        --bg-b: #d5decc;
+        --panel: #fffaf0;
+        --ink: #162027;
+        --muted: #4a5963;
+        --line: #cabf9e;
+        --accent: #0f766e;
+        --accent-2: #14532d;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        font-family: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 12% 8%, #fff4d9 0%, transparent 36%),
+          radial-gradient(circle at 88% 12%, #d6e8dd 0%, transparent 32%),
+          linear-gradient(140deg, var(--bg-a), var(--bg-b));
+      }
+      .wrap {
+        max-width: 920px;
+        margin: 38px auto;
+        padding: 0 16px;
+      }
+      .card {
+        background: color-mix(in srgb, var(--panel) 92%, white);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 22px;
+        box-shadow: 0 14px 38px rgba(22, 32, 39, 0.12);
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.55rem;
+        letter-spacing: 0.01em;
+      }
+      .lead {
+        margin: 8px 0 18px;
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 0.92rem;
+        font-weight: 600;
+      }
+      input, select {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 10px;
+        padding: 11px;
+        font: inherit;
+        color: inherit;
+      }
+      input:focus, select:focus, button:focus {
+        outline: 2px solid color-mix(in srgb, var(--accent) 65%, white);
+        outline-offset: 2px;
+      }
+      .actions {
+        margin-top: 16px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .primary { background: var(--accent); color: #fff; }
+      .secondary { background: var(--accent-2); color: #fff; }
+      .ghost { background: #efe9dd; color: #25313a; }
+      code {
+        background: #f0e7d6;
+        border: 1px solid #d8ccb2;
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+      .url {
+        margin-top: 14px;
+        font-size: 0.9rem;
+        color: #1e2932;
+        word-break: break-all;
+      }
+      .hint {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .status {
+        min-height: 1.3em;
+        margin-top: 6px;
+        font-size: 0.84rem;
+        color: #0b5f58;
+      }
+      @media (max-width: 760px) {
+        .grid { grid-template-columns: 1fr; }
+        .wrap { margin: 24px auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card">
+        <h1>cat_learn_percept launcher</h1>
+        <p class="lead">Set parameters and launch <code>index.html</code> or <code>space_viewer.html</code>.</p>
+
+        <div class="grid">
+          <div>
+            <label for="participant">Participant</label>
+            <input id="participant" type="text" value="999" maxlength="12" />
+          </div>
+          <div>
+            <label for="session">Session</label>
+            <input id="session" type="text" value="001" maxlength="12" />
+          </div>
+          <div>
+            <label for="day">Day</label>
+            <select id="day">
+              <option value="baseline">baseline</option>
+              <option value="post1">post1</option>
+              <option value="post2">post2</option>
+              <option value="unspecified" selected>unspecified</option>
+            </select>
+          </div>
+          <div>
+            <label for="mode">Mode</label>
+            <select id="mode">
+              <option value="cp_probe">cp_probe</option>
+              <option value="acuity_map_2afc" selected>acuity_map_2afc</option>
+              <option value="space_viewer">space_viewer</option>
+            </select>
+          </div>
+          <div>
+            <label for="design">Design</label>
+            <select id="design">
+              <option value="full" selected>full</option>
+              <option value="pilot">pilot</option>
+            </select>
+          </div>
+          <div>
+            <label for="seed">Seed (optional)</label>
+            <input id="seed" type="text" value="" placeholder="leave blank for deterministic default" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="openSame" class="primary" type="button">Launch Here</button>
+          <button id="openNew" class="secondary" type="button">Launch New Tab</button>
+          <button id="copyUrl" class="ghost" type="button">Copy URL</button>
+        </div>
+
+        <div class="url" id="preview"></div>
+        <div class="hint" id="hint"></div>
+        <div class="status" id="status"></div>
+      </section>
+    </main>
+
+    <script>
+      const participantEl = document.getElementById('participant');
+      const sessionEl = document.getElementById('session');
+      const dayEl = document.getElementById('day');
+      const modeEl = document.getElementById('mode');
+      const designEl = document.getElementById('design');
+      const seedEl = document.getElementById('seed');
+      const previewEl = document.getElementById('preview');
+      const hintEl = document.getElementById('hint');
+      const statusEl = document.getElementById('status');
+      const openSameEl = document.getElementById('openSame');
+      const openNewEl = document.getElementById('openNew');
+      const copyUrlEl = document.getElementById('copyUrl');
+
+      const STORAGE_KEY = 'cat_learn_percept_launcher_state_v1';
+
+      function cleanText(v, fallback) {
+        const t = String(v || '').trim();
+        return t.length ? t : fallback;
+      }
+
+      function setStatus(msg) {
+        statusEl.textContent = msg;
+      }
+
+      function syncModeControlState() {
+        const viewerMode = modeEl.value === 'space_viewer';
+        designEl.disabled = viewerMode;
+        seedEl.disabled = viewerMode;
+      }
+
+      function updateHint() {
+        if (modeEl.value === 'space_viewer') {
+          hintEl.textContent = 'Interactive viewer page with dedicated panels for categories, PA probes, and CP pairs.';
+          return;
+        }
+        if (modeEl.value === 'cp_probe' && designEl.value === 'full') {
+          hintEl.textContent = 'CP full profile: 24 practice + balanced within-A/within-B/between-AB trials with a break at 100.';
+          return;
+        }
+        if (modeEl.value === 'acuity_map_2afc' && designEl.value === 'full') {
+          hintEl.textContent = 'PA full profile: category-derived probe points x 2 axes with adaptive stopping and midpoint break.';
+          return;
+        }
+        hintEl.textContent = 'Pilot profile is shorter and intended for debugging only.';
+      }
+
+      function buildUrl() {
+        const participant = cleanText(participantEl.value, '999');
+        const session = cleanText(sessionEl.value, '001');
+        const day = dayEl.value;
+        const mode = modeEl.value;
+        const design = designEl.value;
+        const seed = cleanText(seedEl.value, '');
+
+        const targetPage = mode === 'space_viewer' ? 'space_viewer.html' : 'index.html';
+        const u = new URL(targetPage, window.location.href);
+        u.searchParams.set('participant', participant);
+        u.searchParams.set('session', session);
+        u.searchParams.set('day', day);
+        u.searchParams.set('mode', mode);
+        if (mode !== 'space_viewer') {
+          u.searchParams.set('design', design);
+          if (seed.length) u.searchParams.set('seed', seed);
+        }
+        return u;
+      }
+
+      function saveState() {
+        const payload = {
+          participant: participantEl.value,
+          session: sessionEl.value,
+          day: dayEl.value,
+          mode: modeEl.value,
+          design: designEl.value,
+          seed: seedEl.value,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      }
+
+      function restoreState() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        try {
+          const obj = JSON.parse(raw);
+          if (obj && typeof obj === 'object') {
+            participantEl.value = obj.participant || participantEl.value;
+            sessionEl.value = obj.session || sessionEl.value;
+            dayEl.value = obj.day || dayEl.value;
+            modeEl.value = obj.mode || modeEl.value;
+            designEl.value = obj.design || designEl.value;
+            seedEl.value = obj.seed || seedEl.value;
+          }
+        } catch (err) {
+          // ignore malformed local storage state
+        }
+      }
+
+      function refreshPreview() {
+        syncModeControlState();
+        previewEl.textContent = buildUrl().toString();
+        updateHint();
+        saveState();
+      }
+
+      function launch(sameTab) {
+        const url = buildUrl().toString();
+        if (sameTab) {
+          window.location.href = url;
+          return;
+        }
+        window.open(url, '_blank', 'noopener');
+      }
+
+      async function copyUrl() {
+        const url = buildUrl().toString();
+        try {
+          await navigator.clipboard.writeText(url);
+          setStatus('Launch URL copied to clipboard.');
+        } catch (err) {
+          setStatus('Clipboard blocked in this browser context.');
+        }
+      }
+
+      for (const el of [participantEl, sessionEl, dayEl, modeEl, designEl, seedEl]) {
+        el.addEventListener('input', refreshPreview);
+        el.addEventListener('change', refreshPreview);
+      }
+
+      openSameEl.addEventListener('click', () => launch(true));
+      openNewEl.addEventListener('click', () => launch(false));
+      copyUrlEl.addEventListener('click', copyUrl);
+
+      restoreState();
+      refreshPreview();
+    </script>
+  </body>
+</html>
