@@ -1059,6 +1059,7 @@ if __name__ == '__main__':
         # Response
         prompt_text.text = 'Which interval had the different pair?\n 1 = Interval 1, 2 = Interval 2'
         resp_clock = core.Clock()
+        event.clearEvents(eventType='keyboard')
 
         prompt_text.draw()
         eeg.flip_pulse(TRIG['CP_RESPONSE_PROMPT_ONSET'], global_clock=default_clock)
